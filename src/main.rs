@@ -141,6 +141,7 @@ fn main() {
     let window = WindowBuilder::new().build(&event_loop).unwrap();
     let mut state = pollster::block_on(State::new(&window));
     event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Poll;
        match event {
         Event::WindowEvent {
             ref event,
