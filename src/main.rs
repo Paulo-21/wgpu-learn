@@ -13,6 +13,7 @@ struct State {
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
     size: winit::dpi::PhysicalSize<u32>,
+    mouse_pos: (f64,f64),
 }
 
 impl State {
@@ -46,6 +47,7 @@ impl State {
             present_mode: wgpu::PresentMode::Fifo,
         };
         surface.configure(&device, &config);
+        let mouse_pos: (f64, f64) = (23.3, 43.3);
         Self {
             instance,
             adapter,
@@ -54,6 +56,7 @@ impl State {
             queue,
             config,
             size,
+            mouse_pos,
         }
         
     }
@@ -68,7 +71,31 @@ impl State {
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
-        false
+        match event {
+            WindowEvent::CursorMoved {
+                device_id: DeviceId,
+                position: PhysicalPosition,
+                modifiers: ModifiersState,
+            
+            } => {
+                self.mouse_pos.0 = PhysicalPosition.x;
+                self.mouse_pos.1 = PhysicalPosition.y;
+                //println!("{} {}", PhysicalPosition.x, PhysicalPosition.y);
+                true
+            },
+            WindowEvent::CloseRequested | WindowEvent::KeyboardInput {
+                    input:
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Escape),
+                            ..
+                        },
+                    ..
+                } => true,
+            _ => {
+                false
+            }
+        }
     }
 
     fn update(&mut self) {
@@ -89,10 +116,10 @@ impl State {
                 resolve_target: None,
                 ops: wgpu::Operations {
                     load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.1,
-                        g: 0.2,
-                        b: 0.3,
-                        a: 1.0,
+                        r: self.mouse_pos.0 / 1000.0,
+                        g: self.mouse_pos.0 / 1000.0,
+                        b: self.mouse_pos.1 / 1000.0,
+                        a: self.mouse_pos.1 / 1000.0,
                     }),
                     store: true,
                 },
@@ -118,10 +145,10 @@ fn main() {
         Event::WindowEvent {
             ref event,
             window_id,
-        } if window_id == window.id() => if !state.input(event) { // UPDATED!
+        } if window_id == window.id() => if state.input(event) { // UPDATED!
             match event {
-                WindowEvent::CloseRequested
-                | WindowEvent::KeyboardInput {
+                
+                WindowEvent::CloseRequested | WindowEvent::KeyboardInput {
                     input:
                         KeyboardInput {
                             state: ElementState::Pressed,
