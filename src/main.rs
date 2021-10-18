@@ -130,15 +130,14 @@ impl State {
         Ok(())
     }
 }
-
 fn main() {
     env_logger::init();
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
-
+    
     // State::new uses async code, so we're going to wait for it to finish
     let mut state = pollster::block_on(State::new(&window));
-
+    
     event_loop.run(move |event, _, control_flow| {
         match event {
             Event::WindowEvent {
