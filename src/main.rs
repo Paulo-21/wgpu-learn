@@ -12,6 +12,26 @@ struct Vertex {
     position: [f32; 3],
     color: [f32; 3],
 }
+impl Vertex {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x3,
+                }
+            ]
+        }
+    }
+}
 const VERTICES: &[Vertex] = &[
     Vertex { position: [0.0, 0.5, 0.0], color: [1.0, 0.0, 0.0] },
     Vertex { position: [-0.5, -0.5, 0.0], color: [0.0, 1.0, 0.0] },
@@ -31,6 +51,7 @@ struct State {
     clear_color: wgpu::Color,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
+    num_vertices: u32,
 }
 
 impl State {
@@ -88,7 +109,7 @@ impl State {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: "main", // 1.
-                buffers: &[], // 2.
+                buffers: &[Vertex::desc()], // 2.
             },
             fragment: Some(wgpu::FragmentState { // 3.
                 module: &shader,
@@ -127,6 +148,8 @@ impl State {
                 usage: wgpu::BufferUsages::VERTEX,
             }
         );
+        let num_vertices = VERTICES.len() as u32;
+
         Self {
             instance,
             adapter,
@@ -137,7 +160,8 @@ impl State {
             clear_color,
             size,
             render_pipeline,
-            vertex_buffer
+            vertex_buffer,
+            num_vertices,
         }
         
     }
@@ -202,7 +226,8 @@ impl State {
 
     // NEW!
     render_pass.set_pipeline(&self.render_pipeline); // 2.
-    render_pass.draw(0..3, 0..1); // 3.
+    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+    render_pass.draw(0..self.num_vertices, 0..1); // 3.
 }
 
         self.queue.submit(iter::once(encoder.finish()));
