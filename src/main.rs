@@ -6,9 +6,9 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 struct Object {
-    vertex : wgpu::Buffer,
-    index : wgpu::Buffer,
-    number_indice : u32
+    vertex_buffer : wgpu::Buffer,
+    index_buffer : wgpu::Buffer,
+    num_indices : u32
 
 }
 #[repr(C)]
@@ -43,12 +43,29 @@ const VERTICES: &[Vertex] = &[
     Vertex { position: [-0.21918549, -0.44939706, 0.0], color: [0.4, 0.0, 1.0] }, // C
     Vertex { position: [0.35966998, -0.3473291, 0.0], color: [0.5, 0.5, 0.5] }, // D
     Vertex { position: [0.44147372, 0.2347359, 0.0], color: [0.5, 0.0, 0.5] }, // E
+    Vertex { position: [-0.0868241, -0.49240386, 0.0], color: [1.0, 0.0, 0.0] }, // A
 ];
 
 const INDICES: &[u16] = &[
     0, 1, 4,
+    1, 2, 3,
+    1, 3, 4,
+    /* padding */ 0,
+];
+const VERTICES2: &[Vertex] = &[
+    Vertex { position: [-0.0868241, 0.49240386, 0.0], color: [1.0, 0.0, 0.0] }, // A
+    Vertex { position: [-0.49513406, 0.06958647, 0.0], color: [0.0, 1.0, 0.0] }, // B
+    Vertex { position: [-0.41918549, -0.44939706, 0.0], color: [0.3, 0.0, 1.0] }, // C
+    Vertex { position: [0.35966998, -0.3473291, 0.0], color: [0.0, 0.5, 0.5] }, // D
+    Vertex { position: [0.44147372, 0.2347359, 0.0], color: [0.5, 0.5, 0.5] }, // E
+    Vertex { position: [0.4, 0.3, 0.0], color: [0.5, 0.5, 0.5] }, // F
+];
+
+const INDICES2: &[u16] = &[
+    0, 1, 4,
     1, 2, 4,
-    2, 3, 4,
+    //2, 3, 4,
+    3, 1, 5,
     /* padding */ 0,
 ];
 
@@ -67,7 +84,8 @@ struct State {
     /*vertex_buffer: wgpu::Buffer,
     index_buffer: wgpu::Buffer, 
     num_indices: u32,*/
-    objects : [Object; 2]
+    objects : [Object; 2],
+    objects_indice : usize
 }
 
 impl State {
@@ -175,28 +193,29 @@ impl State {
         let vertex_buffer2 = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Vertex Buffer"),
-                contents: bytemuck::cast_slice(VERTICES),
+                contents: bytemuck::cast_slice(VERTICES2),
                 usage: wgpu::BufferUsages::VERTEX,
             }
         );
         let index_buffer2 = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Index Buffer"),
-                contents: bytemuck::cast_slice(INDICES),
+                contents: bytemuck::cast_slice(INDICES2),
                 usage: wgpu::BufferUsages::INDEX,
             }
         );
-        let num_indices2 = INDICES.len() as u32;
+        let num_indices2 = INDICES2.len() as u32;
         
         let objects = [Object {
-            vertex : vertex_buffer,
-            index : index_buffer,
-            number_indice : num_indices
+            vertex_buffer : vertex_buffer,
+            index_buffer : index_buffer,
+            num_indices : num_indices
         }, Object {
-            vertex : vertex_buffer2,
-            index : index_buffer2,
-            number_indice : num_indices2
+            vertex_buffer : vertex_buffer2,
+            index_buffer : index_buffer2,
+            num_indices : num_indices2
         }];
+        let objects_indice = 0;
         Self {
             instance,
             adapter,
@@ -210,7 +229,8 @@ impl State {
             /*vertex_buffer,
             index_buffer,
             num_indices,*/
-            objects
+            objects,
+            objects_indice
         }
         
     }
@@ -234,7 +254,20 @@ impl State {
                     a: 1.0,
                 };
                 true
-            }
+            },
+            WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        state: ElementState::Pressed,
+                        virtual_keycode: Some(VirtualKeyCode::Space),
+                        ..
+                    },
+                    ..
+                    } => {
+                        self.objects_indice = (self.objects_indice +1) %2;
+                        println!("Struct change");
+                        true
+                    }
             _ => false,
         }
     }
@@ -275,9 +308,9 @@ impl State {
 
     
     render_pass.set_pipeline(&self.render_pipeline);
-    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-    render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16); // 1.
-    render_pass.draw_indexed(0..self.num_indices, 0, 0..1); // 2.
+    render_pass.set_vertex_buffer(0, self.objects[self.objects_indice].vertex_buffer.slice(..));
+    render_pass.set_index_buffer(self.objects[self.objects_indice].index_buffer.slice(..), wgpu::IndexFormat::Uint16); // 1.
+    render_pass.draw_indexed(0..self.objects[self.objects_indice].num_indices, 0, 0..1); // 2.
 }
 
         self.queue.submit(iter::once(encoder.finish()));
@@ -319,17 +352,7 @@ fn main() {
                             // new_inner_size is &mut so w have to dereference it twice
                             state.resize(**new_inner_size);
                         },
-                        WindowEvent::KeyboardInput {
-                            input:
-                                KeyboardInput {
-                                    state: ElementState::Pressed,
-                                    virtual_keycode: Some(VirtualKeyCode::Space),
-                                    ..
-                                },
-                            ..
-                        } => {
-                            println!("hello");
-                        }
+                        
                         _ => {}
                     }
                 }
