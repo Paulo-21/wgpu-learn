@@ -265,7 +265,7 @@ impl State {
                     ..
                     } => {
                         self.objects_indice = (self.objects_indice +1) %2;
-                        println!("Struct change");
+                        //println!("Struct change");
                         true
                     }
             _ => false,
