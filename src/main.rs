@@ -1,4 +1,5 @@
 use std::iter;
+//use std::time::Instant;
 use wgpu::util::DeviceExt;
 use winit::{
     event::*,
@@ -137,7 +138,7 @@ impl State {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         let diffuse_bytes = include_bytes!("happy-tree.png");
         let diffuse_texture = texture::Texture::from_bytes(&device, &queue, diffuse_bytes, "happy-tree.png").unwrap();
-///////////////////////////////////////////////////////////////     
+///////////////////////////////////////////////////////////////
         let texture_bind_group_layout = device.create_bind_group_layout(
             &wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -184,6 +185,7 @@ impl State {
                 label: Some("diffuse_bind_group"),
             }
         );
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         //Set The clear Color
         let clear_color = wgpu::Color::BLACK;
@@ -200,7 +202,7 @@ impl State {
                 push_constant_ranges: &[],
             }
         );
-            
+        
         let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("Render Pipeline"),
             layout: Some(&render_pipeline_layout),
@@ -348,37 +350,39 @@ impl State {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
-
-        {
-    // 1.
-    let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-        label: Some("Render Pass"),
-        color_attachments: &[
-            // This is what [[location(0)]] in the fragment shader targets
-            wgpu::RenderPassColorAttachment {
-                view: &view,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(
-                        self.clear_color
-                    ),
-                    store: true,
+            
+            {
+                // 1.
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Render Pass"),
+                    color_attachments: &[
+                        // This is what [[location(0)]] in the fragment shader targets
+                        wgpu::RenderPassColorAttachment {
+                            view: &view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(
+                                    self.clear_color
+                                ),
+                                store: true,
+                            }
+                        }
+                        ],
+                        depth_stencil_attachment: None,
+                    });
+                    
+                    render_pass.set_pipeline(&self.render_pipeline);
+                    render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+                    render_pass.set_vertex_buffer(0, self.objects[self.objects_indice].vertex_buffer.slice(..));
+                    render_pass.set_index_buffer(self.objects[self.objects_indice].index_buffer.slice(..), wgpu::IndexFormat::Uint16); // 1.
+                    render_pass.draw_indexed(0..self.objects[self.objects_indice].num_indices, 0, 0..1); // 2.
                 }
-            }
-        ],
-        depth_stencil_attachment: None,
-    });
-
-    
-    render_pass.set_pipeline(&self.render_pipeline);
-    render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-    render_pass.set_vertex_buffer(0, self.objects[self.objects_indice].vertex_buffer.slice(..));
-    render_pass.set_index_buffer(self.objects[self.objects_indice].index_buffer.slice(..), wgpu::IndexFormat::Uint16); // 1.
-    render_pass.draw_indexed(0..self.objects[self.objects_indice].num_indices, 0, 0..1); // 2.
-}
-        self.queue.submit(iter::once(encoder.finish()));
-        output.present();
-        Ok(())
+                //let start = Instant::now();
+                self.queue.submit(iter::once(encoder.finish()));
+                output.present();
+                //let end = Instant::now()-start;
+                //println!("Init : {:?}", end);
+                Ok(())
     }
 }
 fn main() {
@@ -387,6 +391,7 @@ fn main() {
     let window = WindowBuilder::new().build(&event_loop).unwrap();
     
     // State::new uses async code, so we're going to wait for it to finish
+    
     let mut state = pollster::block_on(State::new(&window));
     
     event_loop.run(move |event, _, control_flow| {
